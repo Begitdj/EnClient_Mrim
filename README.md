@@ -1,4 +1,6 @@
 # EnClient_Mrim<br>
+![GithubRepo](https://img.shields.io/badge/github-repo-blue?logo=github)
+[![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff)](#)
 EnClinet - это клиент для протокола  сервиса Mail.Ru Agent!<br>
 ### Функции
 Авторизация<br>
