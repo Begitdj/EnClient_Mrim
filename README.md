@@ -1,5 +1,5 @@
 # EnClient_Mrim<br>
-Enclinet - это клиент для протокола  сервиса Mail.Ru Agent!<br>
+EnClinet - это клиент для протокола  сервиса Mail.Ru Agent!<br>
 ### Список файлов <br>
 EnClient.py - сам клиент наговнокоженный<br>
 proto.py&proto_types.py - необходимые файлы для импорта взяты из репозиторя omra в своё время<br>
