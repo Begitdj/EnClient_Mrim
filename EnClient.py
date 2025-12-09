@@ -69,7 +69,7 @@ async def monitor(reader, writer):
     return True
     
 async def hi():
-    print("EnClient 1.2\nBy Sony Eshka <3")
+    print("EnClient 1.2\nBy Sony Eshka(Begitdj) <3")
     if os.path.exists("EnClient.json"):
         with open("EnClient.json", 'r', encoding='utf-8') as f:
             data = json.load(f)
