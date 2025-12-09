@@ -69,7 +69,7 @@ async def monitor(reader, writer):
     return True
     
 async def hi():
-    print("EnClient 1.1\nBy Sony Eshka <3")
+    print("EnClient 1.2\nBy Sony Eshka <3")
     if os.path.exists("EnClient.json"):
         with open("EnClient.json", 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -208,8 +208,16 @@ async def mainCommand(writer):
                     await accept(args[0], writer)
                 else:
                     print("Емаил то введи\n")
+            elif cmd=="status":
+            	if args:
+            		try:
+            			await changeStatus(int(args[0]), writer)
+            		except ValueError:
+            			print("Ошибка преобразования в число!")
+            	else:
+            		print("Нет номера статуса!")
             elif cmd == "help":
-                print('Список доступных команд:\n1. help\n2. microblog <text>\n3. send <email> "Text"\n4. accept <email>\n5. exit')
+                print('Список доступных команд:\n1. help\n2. microblog <text>\n3. send <email> "Text"\n4. accept <email>\n5. status <status number> - Смена статуса(надо указать номер статуса в протоколе Mail.Ru Agent)\n6. exit')
             else:
                 print(f"Неизвестно: {cmd}\n")
         except Exception as e:
@@ -244,6 +252,12 @@ async def accept(email, writer):
                         await writer.drain()
             
                         print("Отправил команду MRIM_CS_AUTHORIZE")
+async def changeStatus(status, writer):
+    status = await create_ul(status)
+    size = len(status)
+    packetStatus = await build_header(magic, proto, sequence, MRIM_CS_CHANGE_STATUS, size) + status
+    writer.write(packetStatus)
+    await writer.drain()
 
 if __name__ == "__main__":
     asyncio.run(hi())
