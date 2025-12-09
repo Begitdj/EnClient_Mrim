@@ -69,7 +69,7 @@ async def monitor(reader, writer):
     return True
     
 async def hi():
-    print("EnClient 1.0\nBy Sony Eshka <3")
+    print("EnClient 1.1\nBy Sony Eshka <3")
     if os.path.exists("EnClient.json"):
         with open("EnClient.json", 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -80,7 +80,7 @@ async def hi():
             "login": input("Введите логин: "),
             "password": input("Введите пароль: "),
             "host": input("Введите Хост: "),
-            "port": input("Введите Порт(от основного сервера не редиректа код пока тупой): ")
+            "port": input("Введите Порт(от сервера редиректа обычно это 2042): ")
         }
         with open("EnClient.json", 'w', encoding='utf-8') as f:
             json.dump(data, f, indent=2, ensure_ascii=False)
@@ -89,7 +89,36 @@ async def hi():
     # Вызываем твою функцию auth
     result = await auth(data['login'], data['password'], data['host'], data['port'], sequence)
     return result
+async def getMainServer(redirect_host, redirect_port):
+	    try:
+	    	reader, writer = await asyncio.open_connection(redirect_host, redirect_port)
+	    except Exception as e:
+	       print(f"Error Conection: {redirect_host}:{redirect_port}: {e}")
+	       return None
+	       
+	    try:
+	       redirect_data = await reader.read(-1)
+	       writer.close()
+	       await writer.wait_closed()
+	    except Exception as e:
+	       print(f"Error during data reading or closing: {e}")
+	       return None
+        
+
+	    if not redirect_data:
+	           print(f"Final data from: {redirect_host}:{redirect_port}")
+	           return b''
+            
+	    return redirect_data.decode('utf-8')
 async def auth(login, passworde, host, port, sequence):
+    try:
+    	main = await getMainServer(host, port)
+    	mainParts = main.strip().split(':')
+    	host = mainParts[0]
+    	port = mainParts[1]
+    except Exception as e:
+        print("Error!")
+        os._exit(0)
     while True:
         try:
             reader, writer = await asyncio.open_connection(host, port)
