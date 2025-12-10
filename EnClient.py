@@ -69,7 +69,7 @@ async def monitor(reader, writer):
     return True
     
 async def hi():
-    print("EnClient 1.2\nBy Sony Eshka(Begitdj) <3")
+    print("EnClient 1.3\nBy Sony Eshka(Begitdj) <3")
     if os.path.exists("EnClient.json"):
         with open("EnClient.json", 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -216,8 +216,13 @@ async def mainCommand(writer):
             			print("Ошибка преобразования в число!")
             	else:
             		print("Нет номера статуса!")
+            elif cmd=="alarm":
+            	if args:
+            		await alarm(args[0], writer)
+            	else:
+            		print("Нет почты!!")
             elif cmd == "help":
-                print('Список доступных команд:\n1. help\n2. microblog <text>\n3. send <email> "Text"\n4. accept <email>\n5. status <status number> - Смена статуса(надо указать номер статуса в протоколе Mail.Ru Agent)\n6. exit')
+                print('Список доступных команд:\n1. help\n2. microblog <text>\n3. send <email> "Text"\n4. accept <email>\n5. status <status number> - Смена статуса(надо указать номер статуса в протоколе Mail.Ru Agent)\n6. alarm <email> - отправляет будильник\n7. exit')
             else:
                 print(f"Неизвестно: {cmd}\n")
         except Exception as e:
@@ -258,6 +263,15 @@ async def changeStatus(status, writer):
     packetStatus = await build_header(magic, proto, sequence, MRIM_CS_CHANGE_STATUS, size) + status
     writer.write(packetStatus)
     await writer.drain()
+async def alarm(target, writer):
+	flags = await create_ul(16512)
+	to = await create_lps(target)
+	message = await create_lps(" ")
+	rtf_message = await create_lps("")
+	size = len(flags + to + message + rtf_message)
+	packetAlarm = await build_header(magic, proto, sequence, MRIM_CS_MESSAGE, size) + flags + to + message + rtf_message
+	writer.write(packetAlarm)
+	await writer.drain()
 
 if __name__ == "__main__":
     asyncio.run(hi())
