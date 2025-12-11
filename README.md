@@ -14,11 +14,11 @@ EnClient.py - сам клиент наговнокоженный<br>
 proto.py&proto_types.py - необходимые файлы для импорта взяты из репозиторя omra в своё время<br>
 ### Сохранение настроек<br>
 Перво начальная настройка сохраняет все данные в EnClient.json а именно login, password, host, port в формате json<br>
-{
-  "login": "test@test.test",
-  "password": "EnClient",
-  "host": "127.0.0.1",
-  "port": "2043"
+{<br>
+  "login": "test@test.test",<br>
+  "password": "EnClient",<br>
+  "host": "127.0.0.1",<br>
+  "port": "2042"<br>
 }<br>
 # ToDo<br>
 Нормальная работа sequnce а не статичные<br>
