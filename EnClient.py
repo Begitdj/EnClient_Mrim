@@ -69,7 +69,7 @@ async def monitor(reader, writer):
     return True
     
 async def hi():
-    print("EnClient 1.3\nBy Sony Eshka(Begitdj) <3")
+    print("EnClient 1.4\nBy Sony Eshka(Begitdj) <3")
     if os.path.exists("EnClient.json"):
         with open("EnClient.json", 'r', encoding='utf-8') as f:
             data = json.load(f)
@@ -82,9 +82,18 @@ async def hi():
             "host": input("Введите Хост: "),
             "port": input("Введите Порт(от сервера редиректа обычно это 2042): ")
         }
-        with open("EnClient.json", 'w', encoding='utf-8') as f:
-            json.dump(data, f, indent=2, ensure_ascii=False)
-        print("Сохранено!")
+        if data['port'].isdigit() == False:
+        	print("Порт содержит текст!")
+        	os._exit(0)
+        q = input("Сохранить данные в файл для последующей авто авторизации?(y/n): ")
+        if q.lower() == 'y':
+            with open("EnClient.json", 'w', encoding='utf-8') as f:
+            	json.dump(data, f, indent=2, ensure_ascii=False)
+            print("Сохранено!")
+        elif q.lower() == 'n':
+        	print("Пропуск...")
+        else:
+        	print("Некоректный ввод! Пропуск...")
     
     # Вызываем твою функцию auth
     result = await auth(data['login'], data['password'], data['host'], data['port'], sequence)
