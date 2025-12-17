@@ -14,7 +14,12 @@ plugin_commands = {}
 class PluginInterface:
     def __init__(self, writer):
         self.writer = writer
-
+        self.message_handlers = []
+        self.queue = asyncio.Queue()
+        
+    async def on_message(self, handler):
+        self.message_handlers.append(handler)
+        
     async def send(self, target, text):
         await send_message(target, text, self.writer)
 
@@ -29,9 +34,22 @@ class PluginInterface:
 
     async def accept(self, email):
         await accept(email, self.writer)
+    async def _message_worker(self):
+        while True:
+            msg_data = await self.queue.get()
+
+            for handler in self.message_handlers:
+                try:
+                    await handler(msg_data)
+                except Exception as e:
+                    print(f"[!] Ошибка в плагине {handler.__name__}: {e}")
+            
+            self.queue.task_done()
 
 async def load_plugins(writer):
+    global plugin_interface
     plugin_interface = PluginInterface(writer)
+    asyncio.create_task(plugin_interface._message_worker())
     base = os.path.dirname(os.path.abspath(__file__))
     plugins_dir = os.path.join(base, "EnClient/plugins")
     
@@ -106,6 +124,9 @@ async def monitor(reader, writer):
                         packetRecv = await build_header(magic, proto, sequence, MRIM_CS_MESSAGE_RECV, packet_size) + packet_data
                         writer.write(packetRecv)
                         await writer.drain()
+                        msg_data = {"from": from_msg, "text": message_text, "id": msg_id}
+                        plugin_interface.queue.put_nowait(msg_data)
+    
                         
                         print("Отправил команду MRIM_CS_MESSAGE_RECV")
                         print(f"От: {from_msg}\nТекст: {message_text}")
@@ -119,7 +140,7 @@ async def monitor(reader, writer):
     return True
     
 async def hi():
-    print("EnClient 1.5\nBy Sony Eshka(Begitdj) <3")
+    print("EnClient 1.6\nBy Sony Eshka(Begitdj) <3")
     if not os.path.exists("EnClient"): os.mkdir("EnClient")
     if os.path.exists("EnClient.json"):
         print("[?] Старый путь хранения файла!")
@@ -243,7 +264,7 @@ async def mainCommand(writer):
             if not line:
                 continue
                 
-            parts = line.split(maxsplit=2)
+            parts = line.split()
             cmd = parts[0].lower()
             args = parts[1:]
             
@@ -289,7 +310,7 @@ async def mainCommand(writer):
             	else:
             		print("Нет почты!!")
             elif cmd in plugin_commands:
-            	await plugin_commands[cmd](PluginInterface(writer), args)
+            	await plugin_commands[cmd](plugin_interface, args)
             elif cmd == "modules":
             	print(f"Список комманд из модулей: {plugin_commands}")
             elif cmd == "help":
