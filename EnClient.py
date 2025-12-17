@@ -1,13 +1,63 @@
 # говно код продакшен
 from proto_types import *
 from proto import *
-import json, random, aiohttp, asyncio, os
+import json, random, aiohttp, asyncio, os, importlib.util, shutil
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 sequence = 1 # Пока Статик
 magic = 0xDEADBEEF  # написано что надо хз
 proto = 65543  # Версия протокола наверное
 session = PromptSession() # Промты Тулкиты
+
+plugin_commands = {}
+# For plugins only!
+class PluginInterface:
+    def __init__(self, writer):
+        self.writer = writer
+
+    async def send(self, target, text):
+        await send_message(target, text, self.writer)
+
+    async def blog(self, text):
+        await MicroBlog(text, self.writer)
+
+    async def status(self, status_id):
+        await changeStatus(status_id, self.writer)
+
+    async def alarm(self, target):
+        await alarm(target, self.writer)
+
+    async def accept(self, email):
+        await accept(email, self.writer)
+
+async def load_plugins(writer):
+    plugin_interface = PluginInterface(writer)
+    base = os.path.dirname(os.path.abspath(__file__))
+    plugins_dir = os.path.join(base, "EnClient/plugins")
+    
+    if not os.path.exists("EnClient"): os.mkdir("EnClient")
+    if not os.path.exists(plugins_dir): os.mkdir(plugins_dir)
+    if not os.path.exists(f"{plugins_dir}/configs"): os.mkdir(f"{plugins_dir}/configs")
+    
+    for file in os.listdir(plugins_dir):
+        if file.endswith(".py"):
+            name = file[:-3]
+            try:
+                file_path = os.path.join(plugins_dir, file)
+                spec = importlib.util.spec_from_file_location(name, file_path)
+                mod = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(mod)
+                
+                if hasattr(mod, 'commands'):
+                    plugin_commands.update(mod.commands)
+                
+                if hasattr(mod, "setup"):
+                    await mod.setup(plugin_interface)
+                    
+                print(f"[*] Плагин {file} загружен")
+            except Exception as e:
+                print(f"[!] Ошибка плагина {file}: {e}")
+            
 
 async def monitor(reader, writer):
     print("EnClient Monitoring on")
@@ -69,11 +119,18 @@ async def monitor(reader, writer):
     return True
     
 async def hi():
-    print("EnClient 1.4\nBy Sony Eshka(Begitdj) <3")
+    print("EnClient 1.5\nBy Sony Eshka(Begitdj) <3")
+    if not os.path.exists("EnClient"): os.mkdir("EnClient")
     if os.path.exists("EnClient.json"):
-        with open("EnClient.json", 'r', encoding='utf-8') as f:
-            data = json.load(f)
-        print("AutoLoaded!")
+        print("[?] Старый путь хранения файла!")
+        shutil.move('EnClient.json', 'EnClient/EnClient.json')
+        print("[+] Путь автоматически был переделан под новый формат!")
+    if os.path.exists("EnClient/EnClient.json"):
+        		try:
+        			with open("EnClient/EnClient.json", 'r', encoding='utf-8') as f:
+        				data = json.load(f)
+        		except json.JSONDecodeError:
+        			print("Ошибка декодирования JSON!!")
     else:
         print("Привет! Похоже вы запустили EnClient в первый раз. Пройдите простую первоначальную настройку")
         data = {
@@ -87,7 +144,7 @@ async def hi():
         	os._exit(0)
         q = input("Сохранить данные в файл для последующей авто авторизации?(y/n): ")
         if q.lower() == 'y':
-            with open("EnClient.json", 'w', encoding='utf-8') as f:
+            with open("EnClient/EnClient.json", 'w', encoding='utf-8') as f:
             	json.dump(data, f, indent=2, ensure_ascii=False)
             print("Сохранено!")
         elif q.lower() == 'n':
@@ -158,6 +215,7 @@ async def auth(login, passworde, host, port, sequence):
                 break
             else:
                 print("Авторизовалось прикинь")
+                await load_plugins(writer)
             with patch_stdout():
                 monitor_task = asyncio.create_task(monitor(reader, writer))
                 command_tash = asyncio.create_task(mainCommand(writer))
@@ -230,8 +288,12 @@ async def mainCommand(writer):
             		await alarm(args[0], writer)
             	else:
             		print("Нет почты!!")
+            elif cmd in plugin_commands:
+            	await plugin_commands[cmd](PluginInterface(writer), args)
+            elif cmd == "modules":
+            	print(f"Список комманд из модулей: {plugin_commands}")
             elif cmd == "help":
-                print('Список доступных команд:\n1. help\n2. microblog <text>\n3. send <email> "Text"\n4. accept <email>\n5. status <status number> - Смена статуса(надо указать номер статуса в протоколе Mail.Ru Agent)\n6. alarm <email> - отправляет будильник\n7. exit')
+                print('Список доступных команд:\n1. help\n2. microblog <text>\n3. send <email> "Text"\n4. accept <email>\n5. status <status number> - Смена статуса(надо указать номер статуса в протоколе Mail.Ru Agent)\n6. alarm <email> - отправляет будильник\n7. modules - список комманд из модулей 8. exit')
             else:
                 print(f"Неизвестно: {cmd}\n")
         except Exception as e:
