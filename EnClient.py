@@ -1,14 +1,15 @@
 # говно код продакшен
 from proto_types import *
 from proto import *
-import json, random, aiohttp, asyncio, os, importlib.util, shutil
+import json, random, aiohttp, asyncio, os, importlib.util, shutil, concurrent.futures
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 sequence = 1 # Пока Статик
 magic = 0xDEADBEEF  # написано что надо хз
 proto = 65543  # Версия протокола наверное
 session = PromptSession() # Промты Тулкиты
-
+# Пул потоков(10)
+executor = concurrent.futures. ThreadPoolExecutor(max_workers=10)
 plugin_commands = {}
 # For plugins only!
 class PluginInterface:
@@ -140,7 +141,7 @@ async def monitor(reader, writer):
     return True
     
 async def hi():
-    print("EnClient 1.6\nBy Sony Eshka(Begitdj) <3")
+    print("EnClient 1.7\nBy Sony Eshka(Begitdj) <3")
     if not os.path.exists("EnClient"): os.mkdir("EnClient")
     if os.path.exists("EnClient.json"):
         print("[?] Старый путь хранения файла!")
@@ -310,7 +311,16 @@ async def mainCommand(writer):
             	else:
             		print("Нет почты!!")
             elif cmd in plugin_commands:
-            	await plugin_commands[cmd](plugin_interface, args)
+            	try:
+            		func = plugin_commands[cmd]
+            		if asyncio.iscoroutinefunction(func):
+            			asyncio.create_task(func(plugin_interface, args))
+            		else:
+            			loop = asyncio.get_event_loop()
+            			loop.run_in_executor(None, func, plugin_interface, args)
+            	except Exception as e:
+            		print(f"Error executing plugin: {e}")
+
             elif cmd == "modules":
             	print(f"Список комманд из модулей: {plugin_commands}")
             elif cmd == "help":
