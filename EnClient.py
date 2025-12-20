@@ -135,13 +135,18 @@ async def monitor(reader, writer):
                         print("Тип: Авторизация")
                         print(f"От: {from_msg}")
                         print("Для одобрения можно воспользоваться командой accept {email}")
+                elif header.get("command") == 0x100f:
+                	status = int.from_bytes(other_data[0:4], "little")
+                	em_sz = int.from_bytes(other_data[4:8], "little")
+                	email = other_data[8:8+em_sz].decode('cp1251', 'ignore')
+                	print(f"Статус {email} изменился на {status}")
         except Exception as e:
             print(f"--- Error: {e} ---")
             return False
     return True
     
 async def hi():
-    print("EnClient 1.7\nBy Sony Eshka(Begitdj) <3")
+    print("EnClient 1.8\nBy Sony Eshka(Begitdj) <3")
     if not os.path.exists("EnClient"): os.mkdir("EnClient")
     if os.path.exists("EnClient.json"):
         print("[?] Старый путь хранения файла!")
@@ -198,6 +203,47 @@ async def getMainServer(redirect_host, redirect_port):
 	           return b''
             
 	    return redirect_data.decode('utf-8')
+
+# bruh
+import struct
+async def parse_cl(payload):
+    import struct, json
+    p, groups = 0, []
+    try:
+        p += 4 # Skip ErrorCode
+        cnt = struct.unpack_from('<I', payload, p)[0]; p += 4
+        # Skip 2 masks
+        for _ in range(2): p += 4 + struct.unpack_from('<I', payload, p)[0]
+        
+        # Groups
+        for _ in range(cnt):
+            sz = struct.unpack_from('<I', payload, p)[0]
+            name = payload[p+4:p+4+sz].decode('cp1251', 'ignore'); p += 4 + sz
+            fl = struct.unpack_from('<I', payload, p)[0]; p += 4
+            groups.append({"name": name, "contacts": []})
+
+        # Contacts (uussuus)
+        while p < len(payload):
+            fl = struct.unpack_from('<I', payload, p)[0]; p += 4
+            idx = struct.unpack_from('<I', payload, p)[0]; p += 4
+            # Email
+            sz = struct.unpack_from('<I', payload, p)[0]
+            em = payload[p+4:p+4+sz].decode('cp1251', 'ignore'); p += 4 + sz
+            # Nick
+            sz = struct.unpack_from('<I', payload, p)[0]
+            nk = payload[p+4:p+4+sz].decode('cp1251', 'ignore'); p += 4 + sz
+            # Auth(u), Stat(u)
+            p += 8
+            # Phone
+            sz = struct.unpack_from('<I', payload, p)[0]
+            ph = payload[p+4:p+4+sz].decode('cp1251', 'ignore'); p += 4 + sz
+
+            if idx < len(groups):
+                groups[idx]["contacts"].append({"email": em, "nick": nk})
+    except: pass
+    return json.dumps({"total": sum(len(g["contacts"]) for g in groups), "groups": groups}, ensure_ascii=False)
+
+
 async def auth(login, passworde, host, port, sequence):
     try:
     	main = await getMainServer(host, port)
@@ -226,18 +272,48 @@ async def auth(login, passworde, host, port, sequence):
             packet = await build_header(magic, proto, sequence, MRIM_CS_LOGIN2, size) + email + password + status + user_agent
             writer.write(packet)
             await writer.drain()
-            print("Получаб пакет от сервера после авторизации: ")
-            data = await reader.read(1024)
-            header = await unbuild_header(data)
-            await asyncio.sleep(0.1)
-            data = await reader.read(1024)
-            header = await unbuild_header(data)
-            if header['magic'] == 0: # арт ты долбаеб
-                print("Иди нахцй дурень ошибка авторизации")
-                break
-            else:
+            h_raw = await reader.readexactly(44)
+            h = await unbuild_header(h_raw)
+            if h['size'] > 0: await reader.readexactly(h['size'])
+
+            if h['command'] == 0x1005:
+                print("Ошибка: Отказ в авторизации (LOGIN_REJ)")
+                return
+            
+            if h['command'] == 0x1004:
                 print("Авторизовалось прикинь")
+                # Ыхыхыхыххыхыэыэыхыэыээыэ Я сумащедщий
+            h_info = await unbuild_header(await reader.readexactly(44))
+            info_raw = await reader.readexactly(h_info['size'])
+            
+            if h_info['command'] == 0x1015:
+                p = 0
+                while p < len(info_raw):
+                    try:
+                        sz = struct.unpack_from('<I', info_raw, p)[0]
+                        key = info_raw[p+4:p+4+sz].decode('cp1251', 'ignore'); p += 4 + sz
+                        sz = struct.unpack_from('<I', info_raw, p)[0]
+                        val = info_raw[p+4:p+4+sz].decode('cp1251', 'ignore'); p += 4 + sz
+                        
+                        if key == "MRIM.NICKNAME":
+                            print(f"Логин как: {val}")
+                            break
+                    except: break
+                    
+                h_cl = await unbuild_header(await reader.readexactly(44))
+                cl_raw = await reader.readexactly(h_cl['size'])
+                if h_cl['command'] == 0x1037:
+                	cl_res = json.loads(await parse_cl(cl_raw))
+                	print(f"Всего контактов: {cl_res['total']}")
+                	for g in cl_res['groups']:
+                	       for c in g['contacts']:
+                	       	print(f"[{g['name']}] {c['nick']} — {c['email']}")
+                else:
+                	print("А что такое контакты??? Мы такое не знаем")
+
+                
                 await load_plugins(writer)
+
             with patch_stdout():
                 monitor_task = asyncio.create_task(monitor(reader, writer))
                 command_tash = asyncio.create_task(mainCommand(writer))
