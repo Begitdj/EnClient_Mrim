@@ -1,7 +1,7 @@
 # говно код продакшен
 from proto_types import *
 from proto import *
-import json, random, aiohttp, asyncio, os, importlib.util, shutil, concurrent.futures
+import json, random, aiohttp, asyncio, os, importlib.util, shutil, concurrent.futures, struct
 from prompt_toolkit import PromptSession
 from prompt_toolkit.patch_stdout import patch_stdout
 sequence = 1 # Пока Статик
@@ -205,7 +205,6 @@ async def getMainServer(redirect_host, redirect_port):
 	    return redirect_data.decode('utf-8')
 
 # bruh
-import struct
 async def parse_cl(payload):
     import struct, json
     p, groups = 0, []
