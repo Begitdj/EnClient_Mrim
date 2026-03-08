@@ -1,4 +1,5 @@
 # EnClient_Mrim<br>
+#### Проект закрыт и разрабатываться больше не будет!
 ![GithubRepo](https://img.shields.io/badge/github-repo-blue?logo=github)
 [![Python](https://img.shields.io/badge/Python-3776AB?logo=python&logoColor=fff)](#)<br>
 EnClinet - это клиент для протокола  сервиса Mail.Ru Agent!<br>
